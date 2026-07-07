@@ -1,0 +1,40 @@
+name: gfs-wind
+
+on:
+  schedule:
+    - cron: '25 4,10,16,22 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gfs-wind
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install eccodes + python deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libeccodes0
+          python -m pip install --upgrade pip
+          pip install numpy xarray cfgrib eccodes
+      - name: Build wind.json (NOAA GFS)
+        run: python gfs_wind.py
+      - name: Commit wind.json
+        run: |
+          git config user.name  "gfs-bot"
+          git config user.email "gfs-bot@users.noreply.github.com"
+          git add wind.json
+          git commit -m "wind: GFS $(date -u +%Y%m%d%H)" || { echo "no change"; exit 0; }
+          git push
+      - name: Purge jsDelivr cache
+        run: |
+          curl -s "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@main/wind.json" || true
