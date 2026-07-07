@@ -4,7 +4,7 @@
 NOAA GFS の地上10m風（UGRD/VGRD）を取得し、leaflet-velocity 形式の wind.json に変換する。
 - GFS 0.25度・パブリックドメイン（米国政府作成＝商用可・帰属不要）。
 - 日本域（沖縄・南西諸島・小笠原を含む）を切り出し、3時間ごと 0〜72時間先（25コマ）。
-- 出力を 0.5度に間引いてファイルを軽くする（風の概況用途に十分）。
+- 0.25度（GFS最高解像度）で出力。値は0.1 m/s精度に丸めてファイルを抑える。
 - 依存: numpy, xarray, cfgrib（eccodes C ライブラリが必要 → Actions側で apt install）。
 出力 wind.json:
 {
@@ -21,7 +21,7 @@ import xarray as xr
 
 REGION = dict(left=120.0, right=150.0, top=48.0, bottom=22.0)  # 与那国〜小笠原まで
 FHRS = list(range(0, 73, 3))                                   # 0,3,...,72
-STRIDE = 2                                                     # 0.25 -> 0.5 度に間引き
+STRIDE = 1                                                     # 0.25度（GFS最高解像度・間引きしない）
 BASE = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl"
 
 
@@ -104,8 +104,8 @@ def main():
         valid = run + datetime.timedelta(hours=fhr)
         jst = valid + datetime.timedelta(hours=9)
         frames.append(dict(fh=fhr, t=jst.strftime("%Y-%m-%dT%H:%M"),
-                           u=[round(float(x), 2) for x in u2d.ravel()],
-                           v=[round(float(x), 2) for x in v2d.ravel()]))
+                           u=[round(float(x), 1) for x in u2d.ravel()],
+                           v=[round(float(x), 1) for x in v2d.ravel()]))
         print(f"  f{fhr:03d} ok  ({grid['nx']}x{grid['ny']})")
     if not frames:
         raise SystemExit("no frames produced")
